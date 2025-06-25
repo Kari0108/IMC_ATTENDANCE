@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>इंदौर नगर निगम - उपस्थिति प्रशासन पैनल</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+    margin: 0;
+    font-family: 'Noto Sans Devanagari', sans-serif;
+    background-color: #f2f7ff;
+    color: #333;
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    background-color: #004aad;
+    padding: 12px 20px;
+    color: white;
+}
+
+.navbar-logo-image {
+    height: 50px;
+    margin-right: 10px;
+    border-radius: 5px;
+    background: white;
+    padding: 4px;
+}
+
+.navbar-logo {
+    font-size: 20px;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.navbar-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.search-bar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center horizontally */
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap; /* For smaller screens */
+}
+#searchInput, #searchType {
+    padding: 8px 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    outline: none;
+    background-color: #f9f9f9;
+    transition: border-color 0.3s;
+}
+
+#searchInput:focus, #searchType:focus {
+    border-color: #004aad;
+}
+
+.search-btn {
+    padding: 8px 14px;
+    background-color: #004aad;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.search-btn:hover {
+    background-color: #00337f;
+}
+
+.admin-container {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.admin-card {
+    text-align: center;
+}
+
+.section-title {
+    font-size: 24px;
+    color: #004aad;
+    margin-bottom: 10px;
+}
+
+.refresh-btn {
+    padding: 10px 20px;
+    background-color: #004aad;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-bottom: 15px;
+    transition: background-color 0.3s ease;
+}
+
+.refresh-btn:hover {
+    background-color: #00337f;
+}
+
+.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 16px;
+}
+
+.attendance-table th,
+.attendance-table td {
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: center;
+}
+
+.attendance-table thead {
+    background-color: #e7f0ff;
+    color: #00337f;
+}
+
+.total-count {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2a7ae2;
+    margin-top: 10px;
+}
+
+.loading,
+.error-message,
+.no-data {
+    font-size: 16px;
+    margin-top: 10px;
+    color: #666;
+}
+
+.error-message {
+    color: #d32f2f;
+}
+
+.no-data {
+    color: #ff9800;
+}
+
+@media screen and (max-width: 600px) {
+    .attendance-table th,
+    .attendance-table td {
+        font-size: 14px;
+        padding: 8px;
+    }
+
+    .navbar-title {
+        font-size: 18px;
+    }
+
+    .refresh-btn {
+        width: 100%;
+        font-size: 15px;
+    }
+}
+
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <img src="indore.jpg" alt="IMC Logo" class="navbar-logo-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+    <div class="navbar-logo" style="display: none;">IMC लोगो</div>
+    <h1 class="navbar-title">इंदौर नगर निगम - उपस्थिति प्रशासन पैनल</h1>
+</nav>
+
+<div class="admin-container">
+    <div class="admin-card">
+        <h2 class="section-title">आज की उपस्थिति सूची</h2>
+        <div class="search-bar-container">
+            <select id="searchType">
+                <option value="name">नाम</option>
+                <option value="phone">फोन नंबर</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="खोजें...">
+            <button class="search-btn" onclick="loadAttendanceData()">खोजें</button>
+        </div>
+
+        <button class="refresh-btn" onclick="loadAttendanceData()">सूची पुनः लोड करें</button>
+        <div id="totalCount" class="total-count" style="display: none;"></div>
+        <div id="loadingMessage" class="loading">डेटा लोड हो रहा है...</div>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <div id="noDataMessage" class="no-data" style="display: none;">आज किसी ने उपस्थिति दर्ज नहीं की है।</div>
+
+        <div id="tableContainer" style="display: none;">
+            <table class="attendance-table">
+                <thead>
+                <tr>
+                    <th class="serial-number">क्रमांक</th>
+                    <th class="name-column">नाम</th>
+                    <th class="phone-column">मोबाइल नंबर</th>
+                    <th class="location-column">स्थान</th>
+                    <th class="time-column">समय</th>
+                    <th>सेल्फ़ी</th>
+                </tr>
+                </thead>
+                <tbody id="attendanceTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Base URL for your API, make sure it matches your backend server.js port
+    const API_BASE_URL = 'http://localhost:3000/api';
+    // Base URL for static assets (e.g., images)
+    const STATIC_ASSETS_BASE_URL = 'http://localhost:3000'; // Points to the root of your backend server
+
+    document.addEventListener('DOMContentLoaded', loadAttendanceData);
+
+    async function loadAttendanceData() {
+        const loading = document.getElementById('loadingMessage');
+        const error = document.getElementById('errorMessage');
+        const noData = document.getElementById('noDataMessage');
+        const table = document.getElementById('tableContainer');
+        const count = document.getElementById('totalCount');
+        const search = document.getElementById('searchInput').value.trim();
+        const type = document.getElementById('searchType').value;
+
+        loading.style.display = 'block';
+        error.style.display = 'none';
+        noData.style.display = 'none';
+        table.style.display = 'none';
+        count.style.display = 'none';
+
+        try {
+            const query = new URLSearchParams();
+            if (search) {
+                query.append('search', search);
+                query.append('type', type);
+            }
+
+            const res = await fetch(`${API_BASE_URL}/admin/view-attendance?${query.toString()}`);
+            const data = await res.json();
+            loading.style.display = 'none';
+
+            if (!data || data.length === 0) {
+                noData.style.display = 'block';
+                return;
+            }
+
+            count.textContent = `कुल उपस्थिति: ${data.length}`;
+            count.style.display = 'block';
+            populateTable(data);
+            table.style.display = 'block';
+        } catch (err) {
+            console.error(err);
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            error.textContent = 'डेटा लोड करने में त्रुटि हुई।';
+        }
+    }
+
+    function populateTable(data) {
+        const tbody = document.getElementById('attendanceTableBody');
+        tbody.innerHTML = '';
+
+        data.forEach((row, i) => {
+            const tr = document.createElement('tr');
+            const time = new Date(row.attendance_time);
+            const formattedTime = time.toLocaleTimeString('hi-IN');
+            const formattedDate = time.toLocaleDateString('hi-IN');
+
+            // Construct the full image URL using STATIC_ASSETS_BASE_URL
+            const selfieSrc = row.selfie ? `${STATIC_ASSETS_BASE_URL}/uploads/${row.selfie}` : '';
+
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${row.name || 'नाम नहीं'}</td>
+                <td>${row.phone_number || 'फोन नहीं'}</td>
+                <td>${row.location_name || 'स्थान नहीं'}</td> <!-- Use location_name if available -->
+                <td>${formattedTime}<br><small>${formattedDate}</small></td>
+                <td>
+                    ${selfieSrc ? `<img src="${selfieSrc}" width="70" height="70" style="border-radius:8px;object-fit:cover;">` : '❌'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+</body>
+</html>
